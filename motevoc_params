@@ -1,0 +1,16 @@
+Mode TFBS
+refspecies ecoli
+TREE (ecoli:1);
+EMprior 0
+ 
+markovorderBG 0
+bgprior 0.99
+bg A 0.25
+bg T 0.25
+bg G 0.25
+bg C 0.25
+
+sitefile sites
+priorfile priors
+printsiteals 1
+minposterior 0

@@ -1,0 +1,449 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Load necessary libraries
+
+```{r}
+library(tidyverse)
+```
+
+# Comparing predictions in both cases, among top five
+
+## Hi1
+
+```{r}
+motSigma %>% 
+  filter(seq_name=="hi1") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+```{r}
+dordeResults %>% 
+  filter(seq_name=="hi1") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+```{r}
+motSigma %>% 
+  filter(seq_name=="hi1") %>% 
+  filter(grepl("GCTTCTGGTGTATACTGTTATGGAAACCAAA",seq))
+```
+
+
+
+
+## Hi3
+
+```{r}
+motSigma %>% 
+  filter(seq_name=="hi3") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+```{r}
+dordeResults %>% 
+  filter(seq_name=="hi3") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+## med2
+
+```{r}
+motSigma %>% 
+  filter(seq_name=="med2") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+```{r}
+dordeResults %>% 
+  filter(seq_name=="med2") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+## med3
+
+```{r}
+motSigma %>% 
+  filter(seq_name=="med3") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+```{r}
+dordeResults %>% 
+  filter(seq_name=="med3") %>% 
+  arrange(desc(WM_score)) %>% 
+  head(10)
+```
+
+# Plot where the sigma70 bs are for hi1
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi1"
+n_row <- 5
+
+df <- motSigma%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi1"
+n_row <- 5
+
+df <- dordeResults%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+
+
+
+
+# Plot where the sigma70 bs are for hi2
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi2"
+n_row <- 5
+
+df <- motSigma%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi2"
+n_row <- 5
+
+df <- dordeResults%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+
+
+# Plot where the sigma70 bs are for hi3
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi3"
+n_row <- 5
+
+df <- motSigma%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "hi3"
+n_row <- 5
+
+df <- dordeResults%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "med2"
+n_row <- 5
+
+df <- motSigma%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "med2"
+n_row <- 5
+
+df <- dordeResults%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "med3"
+n_row <- 5
+
+df <- motSigma%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "med3"
+n_row <- 5
+
+df <- dordeResults%>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(WM_score)) %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,group=top))+
+  geom_line(aes(col=WM_score),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```

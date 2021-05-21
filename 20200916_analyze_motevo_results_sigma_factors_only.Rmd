@@ -1,0 +1,606 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Load necessary libraries
+
+```{r}
+library(tidyverse)
+```
+
+# Introduction
+
+
+# Analyze motevo results
+
+```{r}
+colnames(mot)
+```
+
+Post_prob = posterior probability -> fraction of time a given TF is bound to a given site.
+WM_score= binding energies
+
+# What are the top score? Top binding energies for the synthetic sequences?
+
+```{r}
+prom_list <- c("hi1","hi2","hi3","med1","med2","med3","rpmB","rpsB","rrnB","rplN")
+#prom_list <- lapply(prom_list, function(.l) paste('ecoli_',.l,sep=''))
+```
+
+```{r}
+motSigma <- mot %>% 
+  #filter(name %in% synth_list) %>% 
+  #mutate(tf=as.factor(tf)) %>% 
+  filter(grepl("Sigma",tf))
+  #filter(is.na(name)==FALSE)
+  #group_by(name) %>% 
+  #arrange(desc(WM_score)) %>% 
+  #filter(row_number()<10) %>% 
+  #ungroup()
+```
+
+# Now, I would have to compare this with sigma factors that are found in natural sequences
+
+For potentially a large number of E.coli promoters (100 or so), I would need to know, what are the known sigma factors and which are the unknown sigma factors. Then I can run motevo again and determine a threshold for sigma factors, which has not been done before.
+
+Let's check regulonDB.
+
+I need a list of sigma factors.
+
+So... it turns out that rplN is not a regulon that I can find within RegulonDB.
+
+I could try to look at the contrary. Sigma70: what are its proven targets? What are the typical scores?
+
+So it turns out I should be looking for "sigmulon". "Sigmulon" = "Regulon" by sigma factors.
+
+Tried to look for sigmulon 70 within Regulon DB. Having access to this should enable me to decide 
+
+Within Sigma70 sigmulon:
+- rpsB
+- And that's it!
+
+Within Sigma38 sigmulon:
+- None that I know of.
+
+Within Sigma28 sigmulon:
+- None
+
+Within Sigma24 sigmulon:
+- None
+
+So there does not seem to be any coherence between sigmulon as they are known and what I have here.
+
+Maybe the simplest is to start with the rrnB architecture.
+
+Looking at the rrnB promoter quite naively, there should be a sigma site at 245-267 (-10 of the P2 transcription start site), see: [@murrayRegulationEscherichiaColi2003]
+Where is P1? Should be 132-148. [@gaalTranscriptionRegulationInitiating1997].
+
+What is motevo saying? Nothing of the sort:
+- Best binder is Sigma24.
+- The sigma38 at 123-153 could be P1.
+- And sigma70 at 268-296 could be P2.
+
+```{r}
+motSigma%>% 
+  filter(seq_name=="rrnB") %>% 
+  filter(strand=="+") %>% 
+  arrange(desc(post_prob)) %>% 
+  #filter(row_number()<10) %>% 
+  mutate(top=row_number()) %>% 
+  select(tf,pos,WM_score,post_prob,seq)
+```
+
+Here are all the top sigma70 sites that can be found for rrnB.
+Where are located the top sites?
+
+```{r}
+tf_pattern <- 'Sigma70'
+seq_pattern <- "rrnB"
+n_row <- 2
+strand_pattern <- "+"
+
+df <- mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  filter(strand==strand_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(row_number()<=n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,beg,end,strand,seq) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,col=post_prob,group=top))+
+  geom_line(size=2)+
+  xlim(0,490)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+```{r}
+df %>% 
+  distinct(top,.keep_all = TRUE)
+```
+My ecoli_rrnB sequence is the following:
+```{r}
+library(stringr)
+rrnB_seq <- 'CGCCAGGAGCTGAACAATTATTGCCCGTTTTACAGCGTTACGGCTTCGAAACGCTCGAAAAACTGGCAGTTTTAGGCTGATTTGGTTGAATGTTGCGCGGTCAGAAAATTATTTTAAATTTCCTCTTGTCAGGCCGGAATAACTCCCTATAATGCGCCACCACTGACACGGAACAACGGCAAACACGCCGCCGGGTCAGCGGGGTTCTCCTGAGAACTCCGGCAGAGAAAGCAAAAATAAATGCTTGACTCTGTAGCGGGAAGGCGTATTATGCACACCCCGCGCCGCTGAGAAAAAGCGAAGCGGCACTGCTCTTTAACAATTTATCAGACAATCTGTGTGGGCACTCGAAGATACGGATTCTTAACGTCGCAAGACGAAAAATGAATACCAAGTCTCAAGAGTGAACACGTAATTCATTACGAAGTTTAATTCTTTGAGCGTCAAACTTTTAAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCG'
+
+p1_seq <- str_extract(rrnB_seq,"TTGTCA.*TATAAT")
+p1_seq_pos <- str_locate(rrnB_seq,"TTGTCA.*TATAAT")
+p1_seq
+p1_seq_pos
+```
+According to the literature, the expected P1 site should be between TTGTCA (-35) and TATAAT (-10).
+This site is the third on the list of (+) sites.
+Where is P2?
+
+```{r}
+library(stringr)
+rrnB_seq <- 'CGCCAGGAGCTGAACAATTATTGCCCGTTTTACAGCGTTACGGCTTCGAAACGCTCGAAAAACTGGCAGTTTTAGGCTGATTTGGTTGAATGTTGCGCGGTCAGAAAATTATTTTAAATTTCCTCTTGTCAGGCCGGAATAACTCCCTATAATGCGCCACCACTGACACGGAACAACGGCAAACACGCCGCCGGGTCAGCGGGGTTCTCCTGAGAACTCCGGCAGAGAAAGCAAAAATAAATGCTTGACTCTGTAGCGGGAAGGCGTATTATGCACACCCCGCGCCGCTGAGAAAAAGCGAAGCGGCACTGCTCTTTAACAATTTATCAGACAATCTGTGTGGGCACTCGAAGATACGGATTCTTAACGTCGCAAGACGAAAAATGAATACCAAGTCTCAAGAGTGAACACGTAATTCATTACGAAGTTTAATTCTTTGAGCGTCAAACTTTTAAATTGAAGAGTTTGATCATGGCTCAGATTGAACGCTGGCG'
+
+p2_seq <- str_extract(rrnB_seq,"TTGACT.*TATTAT")
+p2_seq_pos <- str_locate(rrnB_seq,"TTGACT.*TATTAT")
+p2_seq
+p2_seq_pos
+```
+Conclusion: the good sigma70 sites are found on rrnB.
+
+# Other transcription factors on rrnB? Do we find Fis sites?
+
+```{r}
+#tf_pattern <- 'Fis'
+seq_pattern <- "rrnB"
+n_row <- 50
+
+df <- mot%>% 
+  #filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(row_number()<=n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(seq_name,tf,WM_score,post_prob,beg,end,seq)
+
+```
+
+```{r}
+df %>% 
+  distinct(top,.keep_all = TRUE)
+```
+
+# Distribution?
+
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "rrnB"
+n_row <- 20
+
+mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob) %>% 
+  mutate(top=row_number()) %>% 
+  ggplot(aes(top,post_prob))+
+  geom_line(binwidth=1)+
+  theme_bw()+
+  xlab("Ranking")+
+  ylab("Posterior Probability")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+# What about synthetic promoters now?
+## Hi1
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "hi1"
+n_row <- 20
+
+mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,strand) %>% 
+  mutate(top=row_number()) %>% 
+  ggplot(aes(top,post_prob))+
+  geom_line(binwidth=1)+
+  theme_bw()+
+  xlab("Ranking")+
+  ylab("Posterior Probability")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "hi1"
+n_row <- 20
+
+mot %>% 
+  #filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(tf,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number())
+```
+
+
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "hi1"
+n_row <- 5
+
+df <- mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,col=post_prob,group=top))+
+  geom_line(aes(linetype=tf),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+  #facet_wrap(~tf)
+```
+
+
+
+## Hi3
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "hi3"
+n_row <- 20
+
+mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,strand) %>% 
+  mutate(top=row_number()) %>% 
+  ggplot(aes(top,post_prob))+
+  geom_line(binwidth=1)+
+  theme_bw()+
+  xlab("Ranking")+
+  ylab("Posterior Probability")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "hi3"
+n_row <- 20
+
+mot %>% 
+  #filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  #filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(tf,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number())
+```
+
+
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "hi3"
+n_row <- 5
+
+df <- mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,col=post_prob,group=top))+
+  geom_line(aes(linetype=tf),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+  #facet_wrap(~tf)
+```
+
+## med2
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "med2"
+n_row <- 20
+
+mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,strand) %>% 
+  mutate(top=row_number()) %>% 
+  ggplot(aes(top,post_prob))+
+  geom_line(binwidth=1)+
+  theme_bw()+
+  xlab("Ranking")+
+  ylab("Posterior Probability")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "med2"
+n_row <- 20
+
+mot %>% 
+  #filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  #filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(tf,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number())
+```
+
+
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "med2"
+n_row <- 5
+
+df <- mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,col=post_prob,group=top))+
+  geom_line(aes(linetype=tf),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+  #facet_wrap(~tf)
+```
+
+## med3
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "med3"
+n_row <- 20
+
+mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,strand) %>% 
+  mutate(top=row_number()) %>% 
+  ggplot(aes(top,post_prob))+
+  geom_line(binwidth=1)+
+  theme_bw()+
+  xlab("Ranking")+
+  ylab("Posterior Probability")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+```
+
+```{r}
+#tf_pattern <- 'Sigma'
+seq_pattern <- "med3"
+n_row <- 20
+
+mot %>% 
+  #filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  #filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(tf,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number())
+```
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "med3"
+n_row <- 20
+
+mot %>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>%
+  filter(row_number()<n_row) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(tf,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number())
+```
+
+```{r}
+tf_pattern <- 'Sigma'
+seq_pattern <- "med3"
+n_row <- 5
+
+df <- mot%>% 
+  filter(grepl(tf_pattern,tf)) %>% 
+  filter(seq_name==seq_pattern) %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(strand=="+") %>% 
+  filter(row_number()<=n_row) %>% 
+  filter(WM_score>0) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE) %>% 
+  mutate(pos=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob,beg,end,strand) %>% 
+  mutate(top=row_number()) %>% 
+  group_by(top) %>% 
+  do((function(.d)
+    new_d <- .d %>% 
+      rbind(.d[1,],.d[1,],.d[1,]) %>%
+      mutate(ref=row_number()) %>% 
+      mutate(x=NA,y=NA) %>% 
+      mutate(x=ifelse(row_number()==1,beg,x),y=ifelse(row_number()==1,0,y)) %>% 
+      mutate(x=ifelse(row_number()==2,beg,x),y=ifelse(row_number()==2,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==3,end,x),y=ifelse(row_number()==3,WM_score,y)) %>% 
+      mutate(x=ifelse(row_number()==4,end,x),y=ifelse(row_number()==4,0,y)))(.)) %>% 
+  ungroup()
+
+df$top <- factor(df$top, levels = c(1,2,3,4))
+
+df %>% 
+  ggplot(aes(x,y,col=post_prob,group=top))+
+  geom_line(aes(linetype=tf),size=2)+
+  xlim(0,110)+
+  theme_bw()+
+  xlab("Promoter sequence")+
+  ylab("WM score")+
+  labs(title=paste(tf_pattern,"in",seq_pattern,"top",n_row,"post. prob",sep=" "))
+  #facet_wrap(~tf)
+```
+# Comparison with promoter strength
+
+```{r}
+mot%>% 
+  filter(grepl('Sigma70',tf)) %>% 
+  filter(name=="ecoli_rrnB") %>% 
+  arrange(desc(post_prob)) %>% 
+  filter(row_number()<4) %>% 
+  separate(pos,into=c("beg","end"),convert=TRUE,remove=FALSE) %>% 
+  mutate(mid=(beg+end)/2) %>% 
+  select(name,tf,pos,WM_score,post_prob)
+  #ggplot(aes(pos))+
+  #geom_freqpoly(binwidth=1)+
+  #xlim(0,494)
+```
+
+What about sigma38?
+There scores seems to be small.
+
+Quite strikingly, the sigma38 seems closer to what is expected/there seem to be an offset between sigma38 and sigma70. They are also characterized by higher scores.
+What is rrna synthethis was controlled by the absence of rpos rather than the presence of sigma70?
+
+Do we see other TFBS? Such as FIS?
+
+It is found with a low post prob. Would rrnB be a way to measure the energy state of a cell?
+Especially in an environment where cells are growing slowly?
+
+What is my concentration of acetate?
+- 0.2% final: 59.04 g/mol
+- So -> 0.2% = 2g/L = > 3.4*1e-2 mol/L = 34 mM.
+- Which should be enough to induce rpos expression.
+- In presence of acetate, P1 is induced both by sigma38 and sigma70.
+
+"Overall, the data suggest the following. Basal transcription is supplied mainly from P1, likely via sigma70 transcription. Upon acetate challenge, both promoters are induced. The P1 promoter is now transcribed by both the sigma70 and sigma38 holoenzymes with both apparently transcribing at a higher level. The P2 promoter is now induced and transcribed by the sigma38 holoenzyme. Thus induction by acetate appears to have major components from two promoters and via two holoenzymes. The activation of both promoters is achieved at concentrations of extracellular acetate as low as 50 mM, and is not caused in response to a general increase in osmolarity or salt."
+
+
+
+
+
+
+
+
